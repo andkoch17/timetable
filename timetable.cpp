@@ -14,13 +14,13 @@
 	Планы:
 		1.Структура базы данных
 			1.1 Subject +
-			1.2	Teacher + нет проверки на существование предмета 
-			1.3 Group + нет проверки на сузествование предмета
+			1.2	Teacher + 
+			1.3 Group + 
 			1.4 Classroom +
 			1.5 Попробовать подогнать структуру базы данных под алгоритм + 
 		2.Логика базы данных
 			2.1 Нормальная запись словаря, отвечающего за количество часов предмета в семестр +
-			2.2 Если введенного предмета не существует - предложить сделать новый
+			2.2 Если введенного предмета не существует - предложить сделать новый +
 			2.3 Главное меню +
 			2.4 Редактирование (
 									Группы + Добавить проверку на дупликат в добавлении нового проедмета в план
@@ -28,9 +28,9 @@
 									Учителя +
 									Предметы +
 								)
-			2.5 Удаление пустых объектов
-			2.6 Нормальный вывод
-			2.7 Проблема: При ненаохде учителей вылет без сохранения
+			2.5 Удаление пустых объектов (А они вообще есть?)
+			2.6 Нормальный вывод +
+			2.7 Проблема: При ненаохде учителей вылет без сохранения (?)
 		3.Сохранение в текстовый файл(позже в SQL) +
 		4.Алгоритм составления расписания
 
@@ -720,18 +720,33 @@ class DataBase{
 
 			while (true)
 			{
-				string key;
+				string subj_name;
+				bool found = false;
 				cout << "Введите название предмета или |выход| для выхода: ";
-				cin >> key;
+				getline(cin, name);
+				getline(cin, name);
 
 
-				if (key == "выход"){
+				if (subj_name == "выход"){
 					break;
 				}
 
 				for(int i = 0; i < subjects.size(); i++){
-					if (subjects[i].get_name() == key)
+					if (subjects[i].get_name() == subj_name){
 						subj_ids.push_back(subjects[i].get_id());
+						found = true;
+					}
+				}
+
+				if (!found) {
+					cout << "Предмет не найден, хотите добавить?  (Д/Н)" << endl;
+					
+					string accept_key;
+					cin >> accept_key;
+
+					if (accept_key == "д" || accept_key == "Д"){
+						add_new_subject();
+					}
 				}
 			}
 
@@ -744,14 +759,18 @@ class DataBase{
 			//вывод всех учителей на экран
 
 			for(int i = 0; i < teachers.size(); i++){
-				cout <<teachers[i].get_id() <<
-				'/' << teachers[i].get_name() << endl;
+				cout << "ID: " << teachers[i].get_id() << endl <<
+				"Имя: " << teachers[i].get_name() << endl;
 
 				vector<int> subj_ids = teachers[i].get_subj_ids();
-
-				for(int j = 0; j < subj_ids.size(); j++)
-					cout << subj_ids[j] << endl;
-
+				cout << "Предметы: ";
+				for(int id : subj_ids)
+					for(int j = 0; j < subjects.size(); j++)
+						if(subjects[j].get_id() == id){
+							cout << subjects[j].get_name() << ", ";
+							break;
+						}
+				cout << endl;
 			}
 		}
 
@@ -781,8 +800,8 @@ class DataBase{
 
 				char key;
 
-				cout << "ID - " << choosed_teacher -> get_id() << endl
-				<< "Имя" <<  choosed_teacher -> get_name() << endl
+				cout << "ID: " << choosed_teacher -> get_id() << endl
+				<< "Имя: " <<  choosed_teacher -> get_name() << endl
 				<< "Предметы:" << endl;
 
 				vector<int> subj_ids = choosed_teacher -> get_subj_ids();
@@ -796,8 +815,9 @@ class DataBase{
 					}
 				}
 
+				cout << endl;
 				cout << "1.Поменять имя" << endl
-				<< "2.Изменить план" << endl
+				<< "2.Изменить список предметов" << endl
 				<< "3.Удалить учителя" << endl
 				<< "0.Выход" << endl;
 
@@ -810,7 +830,8 @@ class DataBase{
 						system(CLEAR_WORD);
 						string teacher_name;
 						cout << "Введите новое имя" << endl;
-						cin >> teacher_name;
+						getline(cin, name);
+						getline(cin, name);
 						choosed_teacher -> set_name(teacher_name);
 						break;
 					}
@@ -832,10 +853,13 @@ class DataBase{
 									string subj_name;
 									
 									cout << "Введите название предмета, который хотите добавить" << endl;
-									cin >> subj_name;
+									getline(cin, name);
+									getline(cin, name);
+									bool found = false;
 
-									for(int i = 0; i < subjects.size(); i++){
-										if(subjects[i].get_name() == subj_name){
+									for (int i = 0; i < subjects.size(); i++){
+										if (subjects[i].get_name() == subj_name){
+											found = true;
 											bool duplicate = false;
 											for(int j = 0; j < subj_ids.size(); j++){
 												if(subj_ids[j] == subjects[i].get_id())
@@ -844,19 +868,30 @@ class DataBase{
 											if(!duplicate)
 												choosed_teacher -> add_subj(subjects[i].get_id());
 											break;
+										}											
+									}
+
+									if (!found) {
+										cout << "Предмет не найден, хотите добавить?  (Д/Н)" << endl;
+										
+										string accept_key;
+										cin >> accept_key;
+
+										if (accept_key == "д" || accept_key == "Д"){
+											add_new_subject();
 										}
 									}
+
 									break;
 								}
 
 							case '2':
-								{
+							{
 									string subj_name;
 
 									cout << "Введите название предмета, который хотите удалить" << endl;
-									cin >> subj_name;
-								
-									//PRAISE THE SATAN
+									getline(cin, name);
+									getline(cin, name);
 
 									for(int i = 0; i < subjects.size(); i++){
 										if(subjects[i].get_name() == subj_name)
@@ -921,12 +956,26 @@ class DataBase{
 				if (key == "выход")
 					break;
 				
+				bool found = false;
+
 				for(int i = 0; i < subjects.size(); i++){
 					if (subjects[i].get_name() == key){
+						found = true;
 						plan_key = subjects[i].get_id();
 						plan_value = subjects[i].get_hour_amount() / MAX_DAYS_IN_YEAR;
 						plan[plan_key] = plan_value;
 						break;
+					}
+				}
+
+				if (!found) {
+					cout << "Предмет не найден, хотите добавить?  (Д/Н)" << endl;
+					
+					string accept_key;
+					cin >> accept_key;
+
+					if (accept_key == "д" || accept_key == "Д"){
+						add_new_subject();
 					}
 				}
 
@@ -942,17 +991,23 @@ class DataBase{
 			//Вывод всех групп на экран
 			
 			for (int i = 0; i < groups.size(); i++){
-				cout << groups[i].get_id() << '/'
-				<<groups[i].get_name() << '/' << endl;
+				cout << "ID: " << groups[i].get_id() << endl <<
+				"Название: " <<groups[i].get_name() << endl;
 
 				map<int, int> map_plan = groups[i].get_plan();
 
-				map<int, int>::iterator it = map_plan.begin();
+				auto it = map_plan.begin();
+				
+				cout << "Предметы и их часы в неделю: ";
 
 				for (int i = 0; it != map_plan.end(); it++, i++)
 				{
-					cout << it->first << '-' << it->second << endl;
+					for (int j = 0; j < subjects.size(); j++)
+						if (subjects[j].get_id() == it->first){
+							cout << subjects[j].get_name() << " - " << it->second << " ч., ";
+						}
 				}
+				cout << endl;
 			}
 
 			return;
@@ -966,123 +1021,137 @@ class DataBase{
 
 			string name;
 
-			while(true){
-				cout << "Введите название группы, которую хотите редктировать" << endl;
-				getline(cin, name);
+			cout << "Введите название группы, которую хотите редктировать" << endl;
+			getline(cin, name);
 			getline(cin ,name);
 
-				Group* choosed_group;
+			Group* choosed_group;
 
-				for(int i = 0; i < groups.size(); i ++){
-					if(groups[i].get_name() == name)
-						choosed_group = &groups[i];
+			for(int i = 0; i < groups.size(); i ++){
+				if(groups[i].get_name() == name)
+					choosed_group = &groups[i];
+			}
+
+			if(choosed_group != NULL){
+				system(CLEAR_WORD);
+
+				char key;
+
+				cout << "ID - " << choosed_group->get_id()
+				<< "\tНазвание - " << choosed_group->get_name() << endl
+				<< "План группы:" << endl;
+
+				map<int, int> plan = choosed_group->get_plan();
+
+				map<int, int>::iterator it = plan.begin();
+
+				for(int i = 1; it != plan.end(); it++, i++){
+					for(int j = 0; j != subjects.size(); j++){
+						if(subjects[j].get_id() == it -> first)
+							cout << i << "." << subjects[j].get_name() << " - "
+							<< it -> second << endl;
+					}
 				}
 
-				if(choosed_group != NULL){
-					system(CLEAR_WORD);
-
-					char key;
-
-					cout << "ID - " << choosed_group->get_id()
-					<< "\tНазвание - " << choosed_group->get_name() << endl
-					<< "План группы:" << endl;
-
-					map<int, int> plan = choosed_group->get_plan();
-
-					map<int, int>::iterator it = plan.begin();
-
-					for(int i = 1; it != plan.end(); it++, i++){
-						for(int j = 0; j != subjects.size(); j++){
-							if(subjects[j].get_id() == it -> first)
-								cout << i << "." << subjects[j].get_name() << " - "
-								<< it -> second << endl;
-						}
-					}
-
-					cout << "1.Поменять название" << endl
-					<< "2.Изменить план" << endl
-					<< "3.Удалить группу" << endl
-					<< "0.Вернуться" << endl;
-					cin >> key;
-					
-					switch (key)
+				cout << endl;
+				cout << "1.Поменять название" << endl
+				<< "2.Изменить план" << endl
+				<< "3.Удалить группу" << endl
+				<< "0.Вернуться" << endl;
+				cin >> key;
+				
+				switch (key)
+				{
+				case '1':
 					{
-					case '1':
-						{
-							system(CLEAR_WORD);
-							string group_name;
-							cout << "Введите новое название группы" << endl;
-							cin >> group_name;
-							choosed_group->set_name(group_name);
-							break;
-						}
-					
-					case '2':
-						{
-							system(CLEAR_WORD);
-							bool exit = false;
-							while(!exit){
-								cout << "1.Убрать предмет" << endl;
-								cout << "2.Добавить предмет" << endl;
-								cout << "0.Выход" << endl;
-								cin >> key;
+						system(CLEAR_WORD);
+						string group_name;
+						cout << "Введите новое название группы" << endl;
+						cin >> group_name;
+						choosed_group->set_name(group_name);
+						break;
+					}
+				
+				case '2':
+					{
+						system(CLEAR_WORD);
+						bool exit = false;
+						while(!exit){
+							cout << "1.Добавить предмет" << endl;
+							cout << "2.Убрать предмет" << endl;
+							cout << "0.Выход" << endl;
+							cin >> key;
 
-								switch(key)
-								{
-									case '1':
-										{
-											string subj_name;
-											cout << "Введите название предмета, который хотите убрать: ";
-											cin >> subj_name;
+							switch(key)
+							{
+								case '1':
+									{
+										string subj_name;
+										cout << "Введите название предмета, который хотите убрать: ";
+										getline(cin, name);
+										getline(cin, name);
 
-											for(int i=0; i < subjects.size(); i++){
-												if(subjects[i].get_name() == subj_name){
-													choosed_group->delete_from_plan(subjects[i].get_id());
-												}
+										for(int i=0; i < subjects.size(); i++){
+											if(subjects[i].get_name() == subj_name){
+												choosed_group->delete_from_plan(subjects[i].get_id());
 											}
 										}
-										break;
+									}
+									break;
 
-									case '2':
-										{
-											string subj_name;
-											cout << "Введите название предмета, который хотите добавить: ";
-											cin >> subj_name;
+								case '2':
+									{
+										string subj_name;
+										cout << "Введите название предмета, который хотите добавить: ";
+										getline(cin, name);
+										getline(cin, name);
 
-											for(int i = 0; i < subjects.size(); i++){
-												if(subjects[i].get_name() == subj_name){
-													choosed_group->add_to_plan(
-																				subjects[i].get_id(),
-																				subjects[i].get_hour_amount() / MAX_DAYS_IN_YEAR
-																				);
-													break;	
-												}
+										bool found = false;
+
+										for(int i = 0; i < subjects.size(); i++){
+											if(subjects[i].get_name() == subj_name){
+												found = true;
+												choosed_group->add_to_plan(
+																			subjects[i].get_id(),
+																			subjects[i].get_hour_amount() / MAX_DAYS_IN_YEAR
+																			);
+												break;	
 											}
-										}									
-										break;
-									
-									case '0':
-										exit = true;
-										break;
-								}
+										}
+
+										if (!found) {
+											cout << "Предмет не найден, хотите добавить?  (Д/Н)" << endl;
+											
+											string accept_key;
+											cin >> accept_key;
+
+											if (accept_key == "д" || accept_key == "Д"){
+												add_new_subject();
+											}
+										}
+
+									}									
+									break;
+								
+								case '0':
+									exit = true;
+									break;
 							}
 						}
-						break;
-
-					case '3':
-						for(int i = 0; i < groups.size(); i++){
-							if(groups[i].get_id() == choosed_group->get_id())
-								groups.erase(groups.begin()+i);
-								break;
-						}
-						break;
-
-					case '0':
-						return;
-						break;
 					}
-				}else{
-					cout << "Такой группы нет" << endl;
+					break;
+
+				case '3':
+					for(int i = 0; i < groups.size(); i++){
+						if(groups[i].get_id() == choosed_group->get_id())
+							groups.erase(groups.begin()+i);
+							break;
+					}
+					break;
+
+				case '0':
+					return;
+					break;
 				}
 			}
 		}
@@ -1126,10 +1195,10 @@ class DataBase{
 			//Вывод всех предметов на экран
 
 			for (int i = 0; i < subjects.size(); i++)
-				cout << subjects[i].get_id() << '/'
-				<< subjects[i].get_name() << '/'
-				<< subjects[i].get_hour_amount() << '/' <<
-				subjects[i].get_complexity() << endl;
+				cout << "ID: " << subjects[i].get_id() << endl
+				<< "Название: " << subjects[i].get_name() << endl
+				<< "Количество часов за полгода: " << subjects[i].get_hour_amount() << endl
+				<< "Сложность: " << subjects[i].get_complexity() << endl;
 			return;
 		}
 
@@ -1232,8 +1301,8 @@ class DataBase{
 			//Вывод всех аудиторий на экран
 
 			for (int i = 0; i < classrooms.size(); i++){
-				cout << classrooms[i].get_id() << '/'
-				<< classrooms[i].get_name() << endl;
+				cout << "ID: " << classrooms[i].get_id() << endl
+				<< "Название: " << classrooms[i].get_name() << endl;
 			}
 		}
 
