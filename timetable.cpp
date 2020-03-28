@@ -4,8 +4,9 @@
 #include <map>
 #include <clocale>
 #include <fstream>
+//#include <windows.h>			//Библиотека для отображения на windows
 
-#define MAX_PARS 4				//Максимальное количество пар в день
+#define MAX_PAIRS 4				//Максимальное количество пар в день
 #define MAX_DAYS 5				//Количество учебных дней в неделе 
 #define MAX_DAYS_IN_YEAR 80		//Количество учебных дней в семестре
 #define CLEAR_WORD "clear"		//Слово для очистки экрана консоли, для linux-"clear", для WINDOWS - cls
@@ -31,8 +32,14 @@
 			2.5 Удаление пустых объектов (А они вообще есть?)
 			2.6 Нормальный вывод +
 			2.7 Проблема: При ненаохде учителей вылет без сохранения (?)
+			2.8 Автоматическая смена ID
 		3.Сохранение в текстовый файл(позже в SQL) +
-		4.Алгоритм составления расписания
+		4.Алгоритм составления расписания +
+			4.1 Работа с памятью расписания +
+			4.2 Вывод расписания +
+			4.3 Сохранение расписания
+			4.4 Сделать обнуление расписания +
+			4.5 Сделать проверку на большем количестве данных
 
 */
 
@@ -43,15 +50,13 @@ struct shedule
 	/*
 		subj_id - Предмет
 		teacher_id - Преподаватель
-		num_subj - время\на какой паре
 		clsrm_id - аудитория
-		group_id - группа
 	*/
-	int subj_id;
-	int teacher_id; 
-	int num_subj;
-	int clsrm_id;
+	bool exist;
 	int group_id;
+	int subj_id;
+	int teacher_id;
+	int clsrm_id;
 };
 
 class Teacher{
@@ -184,6 +189,14 @@ class Group{
 			return plan;
 		}
 
+		int get_priority(){
+			return priority;
+		}
+
+		void add_priority(int val){
+			priority += val;
+		}
+
 	private:
 		/*
 			group_id - уникальный id
@@ -194,6 +207,7 @@ class Group{
 		string name;
 		int priority;
 		map<int, int> plan;
+		shedule self_shedule;
 };
 
 class Subject{
@@ -513,6 +527,18 @@ class DataBase{
 				}
 			}
 			fin.close();
+
+			active_shedule = (shedule***)malloc(MAX_DAYS*sizeof(shedule**));
+			for (int day = 0; day < MAX_DAYS; day++){
+				active_shedule[day] = (shedule**)malloc(MAX_PAIRS*sizeof(shedule*));
+				for (int pair = 0; pair < MAX_PAIRS; pair++){
+					active_shedule[day][pair] = (shedule*)malloc(groups.size()*sizeof(shedule));
+					for (int group = 0; group < groups.size(); group++){
+						active_shedule[day][pair][group].exist = false;
+					}
+				}
+			}
+
 		}
 
 		void menu(){
@@ -525,11 +551,16 @@ class DataBase{
 			while(true){
 				system(CLEAR_WORD);
 
+				cout << "=================" << endl;
+				show_shedule(active_shedule);
+				cout << "=================" << endl;
+
 				cout << "Выберите следующее действие:" << endl
 				<< "1.Добавить" << endl
 				<< "2.Редактировать базу данных" << endl
 				<< "3.Показать" << endl
-				<< "4.Сохранить изсенения" << endl
+				<< "4.Сохранить изменения" << endl
+				<< "5.Составить расписание" << endl
 				<< "0.Выход" << endl;
 				cin >> key;
 
@@ -577,7 +608,7 @@ class DataBase{
 
 						default:
 							system(CLEAR_WORD);
-							cout << "Вы введи неправильное число";
+							cout << "Вы введи неправильное число" << endl;;
 							break;
 						}
 					}
@@ -686,6 +717,11 @@ class DataBase{
 				case '4':
 					save_changes();
 					break;
+
+					case '5':
+						system(CLEAR_WORD);
+						change_shedule();
+						break;
 				
 				case '0':
 					return;
@@ -1084,7 +1120,7 @@ class DataBase{
 
 							switch(key)
 							{
-								case '1':
+								case '2':
 									{
 										string subj_name;
 										cout << "Введите название предмета, который хотите убрать: ";
@@ -1099,12 +1135,12 @@ class DataBase{
 									}
 									break;
 
-								case '2':
+								case '1':
 									{
 										string subj_name;
 										cout << "Введите название предмета, который хотите добавить: ";
-										getline(cin, name);
-										getline(cin, name);
+										getline(cin, subj_name);
+										getline(cin, subj_name);
 
 										bool found = false;
 
@@ -1317,7 +1353,7 @@ class DataBase{
 
 				cout << "Введите название аудитории, которую хотите редактировать" << endl;
 				getline(cin, name);
-			getline(cin ,name);
+				getline(cin ,name);
 
 				Classroom* choosed_classroom;
 
@@ -1416,16 +1452,311 @@ class DataBase{
 			return;
 		}
 
+		void change_shedule(){
+			
+			
+			active_shedule = (shedule***)realloc(NULL, MAX_DAYS*sizeof(shedule**));
+			for (int day = 0; day < MAX_DAYS; day++){
+				active_shedule[day] = (shedule**)realloc(NULL, MAX_PAIRS*sizeof(shedule*));
+				for (int pair = 0; pair < MAX_PAIRS; pair++){
+					active_shedule[day][pair] = (shedule*)realloc(NULL, groups.size()*sizeof(shedule));
+				}
+			}
+
+			active_shedule = generate_shedule();
+
+
+		}
+
+
+		shedule*** generate_shedule(){
+			shedule*** new_shedule = new shedule**;
+			new_shedule = (shedule***)malloc(MAX_DAYS*sizeof(shedule**));
+			for (int day = 0; day < MAX_DAYS; day++){
+				new_shedule[day] = (shedule**)malloc(MAX_PAIRS*sizeof(shedule*));
+				for (int pair = 0; pair < MAX_PAIRS; pair++){
+					new_shedule[day][pair] = (shedule*)malloc(groups.size()*sizeof(shedule));
+					for (int group = 0; group < groups.size(); group++){
+						new_shedule[day][pair][group].exist = false;
+					}
+				}
+			}
+
+
+			//Сортировка предметов по их сложности
+			for (int i = 0; i < subjects.size(); i++){
+				for (int j = subjects.size()-1; j > i; j--){
+					if (subjects[j].get_complexity() < subjects[j-1].get_complexity()){
+						Subject tmp = subjects[j];
+						subjects[j] = subjects[j-1];
+						subjects[j-1] = tmp;
+					}
+				}
+			}
+
+
+			bool ready_shedule = false;
+
+			while (!ready_shedule){
+
+				//Сортировка групп по их приоритету
+				for (int i = 0; i < groups.size(); i++){
+					for (int j = groups.size()-1; j < i; j++){
+						if (groups[j].get_priority() < groups[j-1].get_priority()){
+						Group tmp = groups[j];
+						groups[j] = groups[j-1];
+						groups[j-1] = tmp;
+					}
+					}
+				}
+
+
+				for (int group = 0; group < groups.size(); group++){
+					int additional_complexity = 0;
+					auto plan = groups[group].get_plan();
+					while (additional_complexity < 10){
+						for (int day = 0; day < MAX_DAYS; day++){
+							int day_max_compexity = day + 5 + additional_complexity;
+							for (int pair = 0; pair < MAX_PAIRS; pair++){
+								if (!new_shedule[day][pair][group].exist){
+									auto iter = plan.begin();
+									
+									bool new_pair = false;
+
+									while (iter != plan.end() && !new_pair){
+										
+										for( int i = 0; i < subjects.size(); i++){
+											if (subjects[i].get_complexity() <= day_max_compexity){
+												if(subjects[i].get_id() == iter->first){
+													int hour_amount = 0;
+													//Сбор сведений о поставленных предметах, что бы не было слишком много часов
+													for (int j = 0; j < MAX_DAYS; j++){
+														for (int z = 0; z < MAX_PAIRS; z++){
+															if (new_shedule[j][z][group].subj_id == iter->first)
+																hour_amount++;
+														}
+													}
+													if (hour_amount < iter->second){
+														//Поиск учителей, которые могут вести данный предмет
+
+														bool teacher_found = false;
+														int teacher_id = 0;
+														bool clsrm_found = false;
+														int clsrm_id = 0;
+
+														//Поиск учителя
+														for (int teacher = 0; teacher < teachers.size(); teacher++){
+															vector<int> subj_ids = teachers[teacher].get_subj_ids();
+															for (int subject = 0; subject < subj_ids.size(); subject++){
+																if (subj_ids[subject] == iter->first){
+																	
+																	bool teacher_free = true;
+																	//Проверка на занятость учителя в это время
+																	for (int j = 0; j < groups.size(); j++){
+																		if (new_shedule[day][pair][j].teacher_id == teachers[teacher].get_id()){
+																			teacher_free = false;
+																		} 
+																	}
+																	if (teacher_free){
+																		teacher_id = teachers[teacher].get_id();
+																		teacher_found = true;
+																		break;
+																	}
+																}
+															}
+														}
+
+														//Поиск аудитории
+														for (int clsrm = 0; clsrm < classrooms.size(); clsrm++){
+															bool clsrm_free = true;
+															for (int j = 0; j < groups.size(); j++){
+																if (new_shedule[day][pair][j].clsrm_id == classrooms[clsrm].get_id()){
+																	clsrm_free = false;
+																}
+															}
+															if (clsrm_free){
+																clsrm_found = true;
+																clsrm_id = classrooms[clsrm].get_id();
+																break;
+															}
+														}
+
+
+														if (teacher_found && clsrm_found){
+															new_shedule[day][pair][group].clsrm_id = clsrm_id;
+															new_shedule[day][pair][group].exist = true;
+															new_shedule[day][pair][group].subj_id = iter->first;
+															new_shedule[day][pair][group].teacher_id = teacher_id;
+															new_shedule[day][pair][group].group_id = groups[group].get_id();
+															new_pair = true;
+														}
+
+													}
+												}
+											}else{
+												break;
+											}	
+										}
+										
+										iter++;
+									}
+								}
+							}
+						}
+					
+						int hour_amount = 0;
+
+						auto plan = groups[group].get_plan();
+
+						bool end = true;
+
+						for (auto iter = plan.begin(); iter != plan.end(); iter ++) {
+
+							for (int i = 0; i < MAX_DAYS; i++){
+								for (int j = 0; j < MAX_PAIRS; j++){
+									if (new_shedule[i][j][group].subj_id == iter->first)
+										hour_amount++;
+								}
+							}
+							if (hour_amount < iter->second){
+								additional_complexity++;
+								end = false;
+							}
+						}
+
+						if (end)
+							break;
+					}
+					
+					int additional_prority = 0;
+
+					for (auto iter = plan.begin(); iter != plan.end(); iter++){
+						int hour_counter = 0;
+						for (int day = 0; day < MAX_DAYS; day++){
+							for (int pair = 0; pair < MAX_PAIRS; pair++){
+								if (new_shedule[group][pair][group].subj_id == iter->first){
+									hour_counter++;
+								}
+							}
+						}
+						if (hour_counter < iter->second){
+							additional_complexity += iter->second - hour_counter;
+							groups[group].add_priority(additional_prority);
+						}
+					}
+				}
+				
+
+				//Проверка на заполненность часов
+				bool fit_hours = true;
+
+				for (int group = 0; group < groups.size(); group++){
+					auto plan = groups[group].get_plan();
+
+					for (auto iter = plan.begin(); iter != plan.end(); iter++){
+						int hour_counter = 0;					
+						for (int day = 0; day < MAX_DAYS; day++){
+							for (int pair = 0; pair < MAX_PAIRS; pair++){
+								if (new_shedule[day][pair][group].subj_id == iter -> first){
+									hour_counter++;
+								}
+							}
+						}
+						if (hour_counter < iter->second){
+							fit_hours = false;
+							break;
+						}
+					}
+					if(!fit_hours)
+						break;
+				}
+
+				if (fit_hours)
+					ready_shedule = true;
+			}
+			return new_shedule;
+		}
+
+		void show_shedule(shedule*** new_shedule){
+			
+			for (int i = 0; i < groups.size(); i++){
+
+				cout << "Группа " << groups[i].get_name() << endl;
+
+				for (int day = 0; day < MAX_DAYS; day++){
+					switch (day)
+					{
+					case 0:
+						cout << "\tПонедельник" << endl;
+						break;
+					
+					case 1:
+						cout << "\tВторник" << endl;
+						break;
+					
+					case 2:
+						cout << "\tСреда" << endl;
+						break;
+
+					case 3:
+						cout << "\tЧетверг" << endl;
+						break;
+
+					case 4:
+						cout << "\tПятница" << endl;
+						break;
+					}
+					
+					for (int pair = 0; pair < MAX_PAIRS; pair++){
+						cout << pair+1 << ". ";
+						for (int group = 0; group < groups.size(); group++){
+							if (new_shedule[day][pair][group].exist){
+								if (new_shedule[day][pair][group].group_id == groups[i].get_id()){
+									for (int subj = 0; subj < subjects.size(); subj++){
+										if (subjects[subj].get_id() == new_shedule[day][pair][group].subj_id){
+											cout << subjects[subj].get_name() << endl;
+											break;
+										}
+									}
+									
+									for (int teacher = 0; teacher < teachers.size(); teacher++){
+										if (teachers[teacher].get_id() == new_shedule[day][pair][group].teacher_id){
+											cout << teachers[teacher].get_name() << endl;
+											break;
+										}
+									}
+
+									for (int clsrm = 0; clsrm < classrooms.size(); clsrm++){
+										if (classrooms[clsrm].get_id() == new_shedule[day][pair][group].clsrm_id){
+											cout << "Аудитория: " << classrooms[clsrm].get_name() << endl;
+											break;
+										}
+									}
+									cout << "\n--------" << endl;
+								}
+							}
+						}
+					}
+					cout << "\n==========" << endl;
+				}
+			}
+			
+		}
+
 	private:
 		vector<Teacher> teachers;
 		vector<Group> groups;
 		vector<Subject> subjects;
 		vector<Classroom> classrooms;
 
-		shedule active_shedule;
+		shedule*** active_shedule;
 };
 
 int main(){
+
+	//Команды для смены кодировки
+	//SetConsoleCP(1251);
+	//SetConsoleOutputCP(1251);
 
 	DataBase db;
 
